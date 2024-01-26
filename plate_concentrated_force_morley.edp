@@ -1,0 +1,32 @@
+load "Morley"
+macro bilaplacien(u,v) ( dxx(u)*dxx(v)+dyy(u)*dyy(v)+2.*dxy(u)*dxy(v) ) // EOM 
+
+real x0=-2,x1=5;
+real y0=-3,y1=2;
+int N=32,M=32;
+mesh Th=square(N,M,[x0+(x1-x0)*x,y0+(y1-y0)*y]);
+plot(Th,wait=true);
+
+fespace Vh(Th,P2Morley);
+
+real E=200*10^6, nu=0.3; //steel
+real k=0.001; //compensation for E in q
+real t=0.01; //thickness 
+real D=-12*k*(1-nu*nu)/(E*t*t*t);
+real K=10;
+real a=0.75;
+func q=D*K*exp(-K*((x+a)^2+(y-a)^2)); //load
+
+fespace Vh1(Th,P2);
+Vh1 f=K*exp(-K*((x+a)^2+(y-a)^2));
+plot(f,value=true,wait=true,cmm="q");
+
+Vh [u,ux,uy],[v,vx,vy];
+real tgv=1e10;
+solve bilap([u,ux,uy],[v,vx,vy]) = int2d(Th)(bilaplacien(u,v))
+								 - int2d(Th)(q*v)
+//								 + on(1,2,3,4,u=0,ux=0,uy=0);
+						   		+ int1d(Th,1,2,3,4)(tgv*u*v);
+
+   
+plot(u,dim=3,cmm="app.sol.",value=true,wait=1,fill=1);

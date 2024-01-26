@@ -1,0 +1,24 @@
+macro Grad(u)[dx(u), dy(u)] // EOM
+
+int N=16;
+mesh Th=square(N,N);
+plot(Th,cmm="Th");
+fespace Vh(Th,P2);
+
+real E=200*10^6, nu=0.3; //steel 2*10^11, graphene 2*10^12
+real k=0.001; //compensation for E in q
+real t=0.01; //thickness 
+real D=-12*(1-nu*nu)/(E*t*t*t);
+func q=D*sin(x)*sin(y); //load
+
+Vh u,v,w;
+
+solve problem1(w,v) = int2d(Th)(Grad(w)'*Grad(v))
+	                - int2d(Th)(q*v)
+					+ on(1,4,w=0);
+
+solve problem2(u,v) = int2d(Th)(Grad(u)'*Grad(v))
+	                - int2d(Th)(w*v)
+   	   	            + on(1,4,u=0);
+
+plot(u,dim=3,cmm="app.sol.",value=1,wait=1,fill=1);

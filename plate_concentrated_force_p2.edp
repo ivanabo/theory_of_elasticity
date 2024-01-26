@@ -1,0 +1,32 @@
+macro Grad(u)[dx(u), dy(u)] // EOM
+
+real x0=-2,x1=5;
+real y0=-3,y1=2;
+int N=32,M=32;
+mesh Th=square(N,M,[x0+(x1-x0)*x,y0+(y1-y0)*y]);
+plot(Th,wait=true);
+
+fespace Vh(Th,P2);
+
+real E=200*10^6, nu=0.3; //steel
+real k=0.001; //compensation for E in q
+real t=0.01; //thickness 
+real D=-12*k*(1-nu*nu)/(E*t*t*t);
+real K=10;
+real a=0.75;
+func q=D*K*exp(-K*((x+a)^2+(y-a)^2)); //load
+
+Vh f=K*exp(-K*((x+a)^2+(y-a)^2));
+plot(f,value=true,wait=true,cmm="q");
+
+Vh u,v,w;
+
+solve problem1(w,v) = int2d(Th)(Grad(w)'*Grad(v))
+	                - int2d(Th)(q*v)
+					+ on(1,2,3,4,w=0);
+
+solve problem2(u,v) = int2d(Th)(Grad(u)'*Grad(v))
+	                - int2d(Th)(w*v)
+   	   	            + on(1,2,3,4,u=0);
+
+plot(u,dim=3,cmm="app.sol.",value=1,wait=1,fill=1);

@@ -1,0 +1,63 @@
+// Model of a clamped plate, i.e. plate model with Dirichlet BC
+//                      \Delta^2 w = f in \Omega
+//                               w = 0 on \partial \Omega
+//                          \nabla = 0 on \partial \Omega
+// Solved using Morley elements.
+
+load "Morley"
+macro bilaplacien(u,v) ( dxx(u)*dxx(v)+dyy(u)*dyy(v)+2.*dxy(u)*dxy(v) ) // EOM 
+
+int N=16;
+real tgv=1e10;
+
+int p=4;
+real[int] L2err(p);
+real[int] H1err(p);
+real[int] L2order(p-1);
+real[int] H1order(p-1);
+
+real E=200*10^6, nu=0.3; //steel 2*10^11, graphene 2*10^12
+real k=0.001; //compensation for E in q
+real t=0.01; //thickness 
+real D=-12*k*(1-nu*nu)/(E*t*t*t);
+func q=4*sin(pi*x)*pi^4*sin(pi*y); //load
+
+for(int i=0; i<p; i++)
+{
+	mesh Th=square(N,N);
+	plot(Th,cmm="Th");
+	fespace Vh(Th,P2Morley);
+
+	Vh [u,ux,uy],[v,vx,vy];
+	Vh [ue,uex,uey]=[D*sin(pi*x)*sin(pi*y), D*pi*cos(pi*x)*sin(pi*y), D*pi*sin(pi*x)*cos(pi*y)];
+
+	plot(ue,dim=3,cmm="u exact",fill=1,value=1);
+
+	solve bilap([u,ux,uy],[v,vx,vy]) = int2d(Th)(bilaplacien(u,v))
+									 - int2d(Th)(D*q*v)
+//									 + on(1,2,3,4,u=0,ux=0,uy=0)
+		+ int1d(Th,1,2,3,4)(tgv*u*v);
+
+	plot(u,dim=3,cmm="app.sol.",value=1,wait=1,fill=1);
+//	real coef=1;
+//	mesh th1=movemesh(Th, [x+ux*coef, y+uy*coef]);
+//	plot(th1,cmm="deformed mesh",wait=1);
+
+	L2err[i]=sqrt(int2d(Th)((ue-u)^2));
+	H1err[i]=sqrt(L2err[i]^2+int2d(Th)((uex-dx(u))^2+(uey-dy(u))^2));
+
+	cout << "L2 error: " << L2err[i] << endl;
+	cout << "H1 error: " << H1err[i] << endl;
+
+	N=N*2;
+}
+
+for(int j=0; j<p-1; j++)
+{
+//	cout << "L2 error: " << L2err[j] << endl;
+	L2order[j]=log(L2err[j]/L2err[j+1])/log(2.);
+	cout<<"red (L2):"<<L2order[j]<<endl;
+//	cout << "H1 error: " << H1err[j] << endl;
+	H1order[j]=log(H1err[j]/H1err[j+1])/log(2.);
+	cout<<"red (H1):"<<L2order[j]<<endl;
+}
